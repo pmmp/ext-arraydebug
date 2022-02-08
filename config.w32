@@ -1,0 +1,7 @@
+ARG_ENABLE('arraydebug', 'arraydebug support', 'no');
+
+if (PHP_ARRAYDEBUG != 'no') {
+	AC_DEFINE('HAVE_ARRAYDEBUG', 1, 'arraydebug support enabled');
+
+	EXTENSION('arraydebug', 'arraydebug.c', null, '/DZEND_ENABLE_STATIC_TSRMLS_CACHE=1');
+}
