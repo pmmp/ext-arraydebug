@@ -39,7 +39,8 @@ static void array_hash_distribution(zval* return_value, HashTable* ht) {
 	zval* zpreviousCount;
 	zend_long count;
 
-	nTableMask = ht->nTableMask;
+	//ignore table mask for packed arrays, it's not used
+	nTableMask = HT_FLAGS(ht) & HASH_FLAG_PACKED ? 0 : ht->nTableMask;
 
 	array_init(return_value);
 
