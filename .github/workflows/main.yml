@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: PHP ${{ matrix.php }}, ZTS ${{ matrix.zts }}
+    runs-on: ubuntu-20.04
+    if: "!contains(github.event.head_commit.message, '[ci skip]')"
+
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.1.19', '8.2.6']
+        zts: [off, on]
+
+    env:
+      CFLAGS: "-march=x86-64"
+      CXXFLAGS: "-march=x86-64"
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Restore PHP build cache
+        id: php-build-cache
+        uses: actions/cache@v2
+        with:
+          path: ${{ github.workspace }}/php
+          key: php-build-debug-${{ matrix.php }}-valgrind-${{ matrix.valgrind }}
+
+      - name: Install cached PHP's dependencies
+        if: steps.php-build-cache.outputs.cache-hit == 'true'
+        run: sudo apt-get update && sudo apt-get install libzip5
+
+      - name: Clone php-build repository
+        if: steps.php-build-cache.outputs.cache-hit != 'true'
+        uses: actions/checkout@v2
+        with:
+          repository: php-build/php-build
+          path: php-build
+
+      - name: Compile PHP
+        if: steps.php-build-cache.outputs.cache-hit != 'true'
+        run: |
+          cd $GITHUB_WORKSPACE/php-build
+          ./install-dependencies.sh
+          PHP_BUILD_ZTS_ENABLE=on PHP_BUILD_CONFIGURE_OPTS="$PHP_BUILD_CONFIGURE_OPTS --enable-debug" ./bin/php-build ${{ matrix.php }} $GITHUB_WORKSPACE/php
+
+      - name: Dump PHP info
+        run: $GITHUB_WORKSPACE/php/bin/php -i
+
+      - name: Build extension
+        run: |
+          $GITHUB_WORKSPACE/php/bin/phpize
+          ./configure --with-php-config=$GITHUB_WORKSPACE/php/bin/php-config
+          make install
