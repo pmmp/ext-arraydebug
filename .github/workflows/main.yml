@@ -28,7 +28,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ${{ github.workspace }}/php
-          key: php-build-debug-${{ matrix.php }}-valgrind-${{ matrix.valgrind }}
+          key: php-build-debug-${{ matrix.php }}-zts-${{ matrix.zts }}
 
       - name: Install cached PHP's dependencies
         if: steps.php-build-cache.outputs.cache-hit == 'true'
