@@ -6,7 +6,7 @@
 extern zend_module_entry arraydebug_module_entry;
 # define phpext_arraydebug_ptr &arraydebug_module_entry
 
-# define PHP_ARRAYDEBUG_VERSION "0.1.0"
+# define PHP_ARRAYDEBUG_VERSION "0.1.1-dev"
 
 # if defined(ZTS) && defined(COMPILE_DL_ARRAYDEBUG)
 ZEND_TSRMLS_CACHE_EXTERN()
