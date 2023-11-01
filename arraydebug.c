@@ -36,8 +36,6 @@ static void array_hash_distribution(zval* return_value, HashTable* ht) {
 	uint32_t nTableMask;
 	Bucket* bucket;
 	uint32_t actualIndex;
-	zval* zpreviousCount;
-	zend_long count;
 
 	//ignore table mask for packed arrays, it's not used
 	nTableMask = HT_FLAGS(ht) & HASH_FLAG_PACKED ? 0 : ht->nTableMask;
@@ -45,15 +43,26 @@ static void array_hash_distribution(zval* return_value, HashTable* ht) {
 	array_init(return_value);
 
 	ZEND_HASH_FOREACH_BUCKET(ht, bucket) {
+		HashTable* hKeys;
+
 		actualIndex = bucket->h | nTableMask;
-		zpreviousCount = zend_hash_index_find(Z_ARRVAL_P(return_value), actualIndex);
-		if (zpreviousCount != NULL) {
-			count = Z_LVAL_P(zpreviousCount);
+		zval *zExistingKeys = zend_hash_index_find(Z_ARRVAL_P(return_value), actualIndex);
+
+		if (zExistingKeys != NULL) {
+			hKeys = Z_ARRVAL_P(zExistingKeys);
+		} else {
+			zval zNewKeys;
+			array_init(&zNewKeys);
+			zend_hash_index_add(Z_ARRVAL_P(return_value), actualIndex, &zNewKeys);
+			hKeys = Z_ARRVAL(zNewKeys);
 		}
-		else {
-			count = 0;
+		zval zKey;
+		if (bucket->key != NULL) {
+			ZVAL_STR_COPY(&zKey, bucket->key);
+		} else {
+			ZVAL_LONG(&zKey, bucket->h);
 		}
-		add_index_long(return_value, actualIndex, count + 1);
+		zend_hash_next_index_insert(hKeys, &zKey);
 	} ZEND_HASH_FOREACH_END();
 }
 
