@@ -56,13 +56,13 @@ static void array_hash_distribution(zval* return_value, HashTable* ht) {
 			zend_hash_index_add(Z_ARRVAL_P(return_value), actualIndex, &zNewKeys);
 			hKeys = Z_ARRVAL(zNewKeys);
 		}
-		zval zKey;
+		zval zv;
+		ZVAL_COPY(&zv, &bucket->val);
 		if (bucket->key != NULL) {
-			ZVAL_STR_COPY(&zKey, bucket->key);
+			zend_hash_add(hKeys, bucket->key, &zv);
 		} else {
-			ZVAL_LONG(&zKey, bucket->h);
+			zend_hash_index_add(hKeys, bucket->h, &zv);
 		}
-		zend_hash_next_index_insert(hKeys, &zKey);
 	} ZEND_HASH_FOREACH_END();
 }
 
