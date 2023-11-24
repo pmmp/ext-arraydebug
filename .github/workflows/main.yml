@@ -14,7 +14,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php: ['8.1.19', '8.2.6']
+        php:
+          - 8.1.26
+          - 8.2.13
+          - 8.3.0
         zts: [off, on]
 
     env:
