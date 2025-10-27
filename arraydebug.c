@@ -37,33 +37,52 @@ static void array_hash_distribution(zval* return_value, HashTable* ht) {
 	Bucket* bucket;
 	uint32_t actualIndex;
 
-	//ignore table mask for packed arrays, it's not used
-	nTableMask = HT_FLAGS(ht) & HASH_FLAG_PACKED ? 0 : ht->nTableMask;
-
 	array_init(return_value);
 
-	ZEND_HASH_FOREACH_BUCKET(ht, bucket) {
-		HashTable* hKeys;
+#if PHP_VERSION_ID >= 80200
+	if ((HT_FLAGS(ht) & HASH_FLAG_PACKED) == 0) {
+#endif
+		//ignore table mask for packed arrays, it's not used
+		nTableMask = HT_FLAGS(ht) & HASH_FLAG_PACKED ? 0 : ht->nTableMask;
 
-		actualIndex = bucket->h | nTableMask;
-		zval *zExistingKeys = zend_hash_index_find(Z_ARRVAL_P(return_value), actualIndex);
+		ZEND_HASH_FOREACH_BUCKET(ht, bucket) {
+			HashTable* hKeys;
 
-		if (zExistingKeys != NULL) {
-			hKeys = Z_ARRVAL_P(zExistingKeys);
-		} else {
+			actualIndex = bucket->h | nTableMask;
+			zval* zExistingKeys = zend_hash_index_find(Z_ARRVAL_P(return_value), actualIndex);
+
+			if (zExistingKeys != NULL) {
+				hKeys = Z_ARRVAL_P(zExistingKeys);
+			} else {
+				zval zNewKeys;
+				array_init(&zNewKeys);
+				zend_hash_index_add(Z_ARRVAL_P(return_value), actualIndex, &zNewKeys);
+				hKeys = Z_ARRVAL(zNewKeys);
+			}
+			zval zv;
+			ZVAL_COPY(&zv, &bucket->val);
+			if (bucket->key != NULL) {
+				zend_hash_add(hKeys, bucket->key, &zv);
+			} else {
+				zend_hash_index_add(hKeys, bucket->h, &zv);
+			}
+		} ZEND_HASH_FOREACH_END();
+#if PHP_VERSION_ID >= 80200
+	} else {
+		zend_ulong key;
+		zval* val;
+		ZEND_HASH_PACKED_FOREACH_KEY_VAL(ht, key, val) {
 			zval zNewKeys;
-			array_init(&zNewKeys);
-			zend_hash_index_add(Z_ARRVAL_P(return_value), actualIndex, &zNewKeys);
-			hKeys = Z_ARRVAL(zNewKeys);
-		}
-		zval zv;
-		ZVAL_COPY(&zv, &bucket->val);
-		if (bucket->key != NULL) {
-			zend_hash_add(hKeys, bucket->key, &zv);
-		} else {
-			zend_hash_index_add(hKeys, bucket->h, &zv);
-		}
-	} ZEND_HASH_FOREACH_END();
+
+			zval zv;
+			ZVAL_COPY(&zv, val);
+			array_init_size(&zNewKeys, 1);
+			zend_hash_index_add(Z_ARRVAL(zNewKeys), key, &zv);
+
+			zend_hash_index_add(Z_ARRVAL_P(return_value), key, &zNewKeys);
+		} ZEND_HASH_FOREACH_END();
+	}
+#endif
 }
 
 /* {{{ */
@@ -84,6 +103,10 @@ PHP_FUNCTION(array_load_factor) {
 	ZEND_PARSE_PARAMETERS_START_EX(ZEND_PARSE_PARAMS_THROW, 1, 1)
 		Z_PARAM_ARRAY_HT(ht)
 	ZEND_PARSE_PARAMETERS_END();
+
+	if (HT_FLAGS(ht) & HASH_FLAG_PACKED) {
+		RETURN_DOUBLE(1.0);
+	}
 
 	array_hash_distribution(&distribution, ht);
 
